@@ -1,0 +1,111 @@
+use crate::{schema::{tokens, users}, routes::AuthenticationRequest, errors::AppError};
+use diesel::prelude::*;
+use argon2::{
+    password_hash::{SaltString, rand_core::{
+        RngCore,OsRng,
+    }},
+    Argon2, 
+    PasswordHasher, PasswordHash, PasswordVerifier
+};
+use uuid::Uuid;
+
+#[derive(Queryable, Debug, PartialEq)]
+pub struct User {
+    pub id: Uuid,
+    pub username: String,
+    pub secret: String,
+}
+
+#[derive(Insertable)]
+#[diesel(table_name = users)]
+pub struct NewUser<'a> {
+    pub username: &'a str,
+    pub secret: &'a str,
+}
+
+#[derive(Insertable, Queryable)]
+#[diesel(table_name = tokens)]
+pub struct NewToken<'a> {
+    pub token: &'a str,
+    pub user_id: &'a Uuid,
+}
+
+pub trait AuthorizationDatabase {
+    fn login(&self, conn: &mut PgConnection) -> Result<String, AppError>;
+    fn registration(&self, conn: &mut PgConnection) -> Result<(), AppError>;
+}
+
+impl AuthorizationDatabase for AuthenticationRequest {
+    fn login(&self, conn: &mut PgConnection) -> Result<String, AppError> {
+        match users::table 
+            .filter(users::username.eq(self.login.to_lowercase()))
+            .get_result::<User>(conn) 
+        {
+                Ok(user) => {
+                    let parsed_hash = PasswordHash::new(&user.secret)?;
+                    if Argon2::default()
+                        .verify_password(self.password.as_bytes(), &parsed_hash)
+                        .is_ok() 
+                    {
+                        // Создаём токен, который вернётся в routes!!!
+                        create_token(user, conn)
+                    } else {
+                        Err(AppError::WrongPassword)
+                    }
+                },
+                Err(e) => Err(AppError::from(e)),                
+        }
+    }
+
+    fn registration(&self, conn: &mut PgConnection) -> Result<(), AppError> {
+        
+        let salt = match self.password.len() {
+            n if n < 8 => return Err(AppError::WeakPassword),
+            n if n > 128 => return Err(AppError::TooLongPassword),
+            _ => SaltString::generate(&mut OsRng),
+        };
+        
+        let argon2 = Argon2::default();
+        let password_hash = argon2
+            .hash_password(self.password.as_bytes(), &salt)?.to_string();
+
+        let new_user = NewUser {
+            username: &self.login.to_lowercase(),
+            secret: &password_hash,
+        };
+
+        return match diesel::insert_into(users::table).values(new_user).get_result::<User>(conn) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(AppError::from(e)),
+        }
+    }
+}
+
+pub fn create_token(user: User, conn: &mut PgConnection) -> Result<String, AppError> {
+    let mut token_bytes = [0u8, 32];
+    OsRng.fill_bytes(&mut token_bytes);
+    let token_string = base64::encode(token_bytes);
+    let token_entry = NewToken {
+        token: &token_string,
+        user_id: &user.id,
+    };
+    match diesel::insert_into(tokens::table)
+        .values(token_entry)
+        .execute(conn)
+        {
+            Ok(_) => Ok(token_string),
+            Err(e) => Err(AppError::from(e)),
+        }
+}
+
+pub fn check_token (processed_token: String, conn: &mut PgConnection) -> Result<User, AppError> {
+    match users::table
+        .left_join(tokens::table.on(tokens::user_id.eq(users::id)))
+        .select((users::id, users::username, users::secret))
+        .filter(tokens::token.eq(&processed_token))
+        .get_result::<User>(conn)
+    {
+        Ok(user) => Ok(user),
+        Err(_) => Err(AppError::UnauthorizedUser),
+    }
+}
