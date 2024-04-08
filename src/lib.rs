@@ -27,6 +27,7 @@ impl AuthServer {
     pub async fn run (self, database_url: String)-> std::io::Result<()> {
 // создаём пул подключений к базе данных
         let pool = manage_database(database_url);
+
 // автоматизируем миграции 
         run_migrations(&mut pool
             .get()
@@ -37,7 +38,9 @@ impl AuthServer {
         println!("Сервер запущен");
         HttpServer::new( move || {
             App::new()
+                // деаем мст к азе данных. 
                 .app_data(web::Data::new(pool.clone()))
+                // create null uuid for user (init AuthorizedUser struct)
                 .app_data(web::Data::new(AuthorizedUser { user_id: Cell::new(Uuid::nil()) }))
                 .wrap_fn( |req, srv|{ // стр. 119 и никакого толка // со стр. 190 начинается что-то важное, стр. 211
                     
