@@ -1,49 +1,69 @@
+use actix_web::{dev::ServiceRequest, guard::Guard};
 use actix_web::web;
-use futures::FutureExt;
-use actix_web::dev::ServiceRequest;
+use diesel::{deserialize::FromSqlRow, sql_types::Integer, expression::AsExpression};
 
 use crate::{
-    errors::AppError, 
-    db_connection::PgPool, 
-    models::check_token, AuthorizedUser,
+    db_connection::PgPool, AuthorizedUser, errors::AppError, models::check_token,
 };
 
-pub async fn process_token(
-    processed_token: String, 
-    pool: web::Data<PgPool>, 
-    auth: web::Data<AuthorizedUser>
-) -> Result<(), AppError> {
-    let result = web::block(move|| {
-        let conn = &mut pool.get().expect("Ошибка соединения при обработке токена");                
-        match check_token(processed_token, conn) {
-            Ok(user) => Ok(user.id),
-            Err(e) => Err(e),
-        }
-    })
-    .map(|f| f.unwrap())
-    .await;
+#[derive(PartialEq, Debug, FromSqlRow, AsExpression)]
+#[diesel(sql_type = Integer)]
+pub enum AccessRights {
+    Admin,
+    User, 
+    Unregistered, 
+}
 
-    auth.get_ref().user_id.set(result.expect("Ошибка AuthorizedUser"));
+impl AccessRights {
+    pub fn guard(access_rights: AccessRights) -> Self {
+        access_rights
+    }
+}
 
-    Ok(())
+impl Guard for AccessRights {
+    fn check(&self, ctx: &actix_web::guard::GuardContext<'_>) -> bool {
+        let data = &ctx.req_data(); 
+        let check = data.get::<AuthorizedUser>().unwrap().access_rights.clone();
+        let access_rights = check.lock().unwrap();
+        if *self == *access_rights { true } else { false }
+    }
 }
 
 pub fn extract_header_token(request: &ServiceRequest) -> Result<String, AppError> {
     match request.headers().get("authorization") {
-        Some(token) => {
-            match token.to_str() {
-                Ok(processed_token) => Ok(String::from(processed_token)),
-                Err(_) => Err(AppError::ErrorProcessingToken),
-            }
+        Some(token) => match token.to_str() {
+            Ok(processed_token) => Ok(String::from(processed_token)),
+            Err(_) => Err(AppError::ErrorProcessingToken),
         },
-        None => Err(AppError::NoTokenInHeader)
+        None => Err(AppError::NoTokenInHeader),
     }
+}
+
+pub fn process_token(
+    processed_token: String,
+    pool: web::Data<PgPool>,
+) -> Result<(uuid::Uuid, String, crate::AccessRights), AppError> {
+    let conn = &mut pool.get().expect("Ошибка соединения при обработке токена");
+    let result = match check_token(processed_token, conn) {
+        Ok(user) => Ok((
+            user.id,
+            user.username,
+            user.access_rights
+        )),
+        Err(_) => Err(AppError::UnauthorizedUser),
+    };
+
+    result
+
+    //auth.get_ref()
+    //    .user_id
+    //    .set(result.expect("Ошибка AuthorizedUser"));
 }
 
 /*
 #[post("/login")]
 pub async fn login(
-    maybe_login_request: Option<web::Json<AuthenticationRequest>>, 
+    maybe_login_request: Option<web::Json<AuthenticationRequest>>,
     pool: web::Data<PgPool>
 ) -> Result<HttpResponse, AppError> {
     web::block(move|| {
