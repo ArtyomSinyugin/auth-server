@@ -1,13 +1,14 @@
 use actix_web::{dev::ServiceRequest, guard::Guard};
 use actix_web::web;
-use diesel::{deserialize::FromSqlRow, sql_types::Integer, expression::AsExpression};
+use diesel::deserialize::FromSqlRow;
+//use diesel::{deserialize::FromSqlRow, sql_types::Integer, expression::AsExpression};
 
 use crate::{
     db_connection::PgPool, AuthorizedUser, errors::AppError, models::check_token,
 };
 
-#[derive(PartialEq, Debug, FromSqlRow, AsExpression)]
-#[diesel(sql_type = Integer)]
+#[derive(PartialEq, Debug, FromSqlRow, Clone, Copy)]
+//#[diesel(sql_type = Integer)]
 pub enum AccessRights {
     Admin,
     User, 
@@ -22,10 +23,9 @@ impl AccessRights {
 
 impl Guard for AccessRights {
     fn check(&self, ctx: &actix_web::guard::GuardContext<'_>) -> bool {
-        let data = &ctx.req_data(); 
-        let check = data.get::<AuthorizedUser>().unwrap().access_rights.clone();
-        let access_rights = check.lock().unwrap();
-        if *self == *access_rights { true } else { false }
+        let data = &ctx.app_data::<actix_web::web::Data<AuthorizedUser>>().cloned().unwrap();
+        let data = data.access_rights.lock().unwrap();
+        if *self == *data { true } else { println!("No user rights"); false }
     }
 }
 

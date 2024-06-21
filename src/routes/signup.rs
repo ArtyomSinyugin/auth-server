@@ -13,6 +13,8 @@ pub async fn registration(
     maybe_registration_request: Option<web::Json<AuthenticationRequest>>,
     pool: web::Data<PgPool>,
 ) -> Result<HttpResponse, AppError> {
+    let x = 5;
+    dbg!(x);
     web::block(move || {
         let conn = &mut pool.get().expect("Ошибка соединения при регистрации");
         match maybe_registration_request

@@ -1,7 +1,7 @@
 use crate::{
     errors::AppError, AccessRights, routes::AuthenticationRequest, schema::{tokens, users}
 };
-use diesel::{backend::{self, Backend}, deserialize::{self, FromSql}, serialize::ToSql, sql_types::Integer};
+use diesel::{backend::Backend, deserialize::{self, FromSql}, serialize::ToSql, sql_types::Integer};
 use argon2::{
     password_hash::{
         rand_core::{OsRng, RngCore},
@@ -12,7 +12,7 @@ use argon2::{
 use diesel::prelude::*;
 use uuid::Uuid;
 
-#[derive(Queryable, Debug, PartialEq)]
+#[derive(Queryable, Debug,  PartialEq)]
 pub struct User {
     pub id: Uuid,
     pub username: String,
@@ -39,11 +39,11 @@ where
     DB: Backend,
     i32: FromSql<Integer, DB>,
 {
-    fn from_sql(bytes: backend::RawValue<DB>) -> deserialize::Result<Self> {
+    fn from_sql(bytes: DB::RawValue<'_>) -> deserialize::Result<Self> {
         match i32::from_sql(bytes)? {
-            1 => Ok(AccessRights::Admin),
-            2 => Ok(AccessRights::User),
-            3 => Ok(AccessRights::Unregistered),
+            0 => Ok(AccessRights::Admin),
+            1 => Ok(AccessRights::User),
+            2 => Ok(AccessRights::Unregistered),
             x => Err(format!("Unrecognized variant in user rights {}", x).into())
         }
     }
@@ -70,6 +70,8 @@ pub trait AuthorizationDatabase {
 
 impl AuthorizationDatabase for AuthenticationRequest {
     fn login(&self, conn: &mut PgConnection) -> Result<String, AppError> {
+        println!("{}", self.login);
+        println!("{}", self.password);
         match users::table
             .filter(users::username.eq(self.login.to_lowercase()))
             .get_result::<User>(conn)
