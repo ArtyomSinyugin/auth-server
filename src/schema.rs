@@ -1,6 +1,8 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
+    use diesel::sql_types::*;
+
     tokens (token) {
         token -> Varchar,
         user_id -> Uuid,
@@ -10,9 +12,13 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+
     users (id) {
         id -> Uuid,
+        #[max_length = 128]
         username -> Varchar,
+        access_rights -> Int4,
         secret -> Text,
     }
 }

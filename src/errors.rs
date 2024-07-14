@@ -1,27 +1,27 @@
-use actix_web::{error::BlockingError, ResponseError, HttpResponse};
+use actix_web::{error::BlockingError, HttpResponse, ResponseError};
 use diesel::result::{
-    DatabaseErrorKind::{UniqueViolation, SerializationFailure, NotNullViolation},
-    Error::{DatabaseError, NotFound}
+    DatabaseErrorKind::{NotNullViolation, SerializationFailure, UniqueViolation},
+    Error::{DatabaseError, NotFound},
 };
-use std::fmt;
 use serde::Serialize;
+use std::fmt;
 
 // создаём собственный список ошибок
 #[derive(Debug)]
 pub enum AppError {
-    UsernameAlreadyInUse, 
-    SerializationFailure, 
-    WeakPassword, 
+    UsernameAlreadyInUse,
+    SerializationFailure,
+    WeakPassword,
     TooLongPassword,
     WrongPassword,
-//    TokenNotFound,
+    //    TokenNotFound,
     ErrorProcessingToken,
-    NoTokenInHeader, 
+    NoTokenInHeader,
     UnauthorizedUser,
     NotNullViolation,
     NotFound,
     DatabaseError(diesel::result::Error),
-    OperationCanceled, 
+    OperationCanceled,
     HashFailure,
 }
 // сопоставляем ошибки базы данных с нашим списком
@@ -38,13 +38,13 @@ impl From<diesel::result::Error> for AppError {
 }
 // сопоставляем ошибки сервера auth-server с нашим списком
 impl From<BlockingError> for AppError {
-    fn from (_: BlockingError) -> Self {
+    fn from(_: BlockingError) -> Self {
         AppError::OperationCanceled
     }
 }
 // ошибки, которые могут возникнуть при хеширования пароля
 impl From<argon2::password_hash::errors::Error> for AppError {
-    fn from (_: argon2::password_hash::errors::Error) -> Self {
+    fn from(_: argon2::password_hash::errors::Error) -> Self {
         AppError::HashFailure
     }
 }
@@ -57,7 +57,7 @@ impl fmt::Display for AppError {
             AppError::WeakPassword => write!(f, "weak_password"),
             AppError::TooLongPassword => write!(f, "too_long_password"),
             AppError::WrongPassword => write!(f, "wrong_password"),
-//            AppError::TokenNotFound => write!(f, "need_to_login"),
+            //            AppError::TokenNotFound => write!(f, "need_to_login"),
             AppError::ErrorProcessingToken => write!(f, "error_processing_token"),
             AppError::NoTokenInHeader => write!(f, "there_is_no_token_in_the_header"),
             AppError::UnauthorizedUser => write!(f, "authorization_error"),
@@ -84,7 +84,7 @@ impl ResponseError for AppError {
             AppError::TooLongPassword => HttpResponse::Forbidden(),
             AppError::WrongPassword => HttpResponse::BadRequest(),
             AppError::UnauthorizedUser => HttpResponse::Unauthorized(),
-//            AppError::TokenNotFound => HttpResponse::NotFound(),
+            //            AppError::TokenNotFound => HttpResponse::NotFound(),
             AppError::NotNullViolation => HttpResponse::BadRequest(),
             AppError::NotFound => HttpResponse::NotFound(),
             _ => HttpResponse::InternalServerError(),

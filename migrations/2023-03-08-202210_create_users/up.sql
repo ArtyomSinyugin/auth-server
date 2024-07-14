@@ -6,6 +6,7 @@ id uuid DEFAULT uuid_generate_v4() NOT NULL
     CONSTRAINT table_name_pk 
         PRIMARY KEY, 
 username VARCHAR(128) NOT NULL,
+access_rights INTEGER DEFAULT 1 NOT NULL,
 secret TEXT NOT NULL
 );
 
