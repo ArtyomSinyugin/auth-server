@@ -4,7 +4,7 @@ use diesel::deserialize::FromSqlRow;
 //use diesel::{deserialize::FromSqlRow, sql_types::Integer, expression::AsExpression};
 
 use crate::{
-    db_connection::PgPool, AuthorizedUser, errors::AppError, models::check_token,
+    db_connection::PgPool, AuthorizedUser, errors::AppError, models::process_tokens::check_token,
 };
 
 #[derive(PartialEq, Debug, FromSqlRow, Clone, Copy)]
@@ -33,7 +33,7 @@ pub fn extract_header_token(request: &ServiceRequest) -> Result<String, AppError
     match request.headers().get("authorization") {
         Some(token) => match token.to_str() {
             Ok(processed_token) => Ok(String::from(processed_token)),
-            Err(_) => Err(AppError::ErrorProcessingToken),
+            Err(_) => Err(AppError::Unreachable),
         },
         None => Err(AppError::NoTokenInHeader),
     }

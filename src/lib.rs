@@ -5,7 +5,9 @@ mod models;
 mod routes;
 mod schema;
 
-use crate::{db_connection::*, routes::{characters, for_staff, page, guards::AccessRights}};
+use crate::{db_connection::*, routes::{
+    requests::{characters, for_staff, page},
+    guards::AccessRights}};
 use actix_web::{guard, web, App, HttpServer};
 use routes::page404;
 

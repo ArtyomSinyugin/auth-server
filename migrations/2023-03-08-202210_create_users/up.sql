@@ -7,6 +7,7 @@ id uuid DEFAULT uuid_generate_v4() NOT NULL
         PRIMARY KEY, 
 username VARCHAR(128) NOT NULL,
 access_rights INTEGER DEFAULT 1 NOT NULL,
+company VARCHAR(255),
 secret TEXT NOT NULL
 );
 

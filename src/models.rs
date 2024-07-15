@@ -1,15 +1,16 @@
+pub mod process_tokens;
+pub mod job;
+
 use crate::{
-    errors::AppError, AccessRights, routes::AuthenticationRequest, schema::{tokens, users}
+    errors::AppError, routes::AuthenticationRequest, schema::{timers, tokens, users, jobs}, AccessRights
 };
 use diesel::{backend::Backend, deserialize::{self, FromSql}, serialize::ToSql, sql_types::Integer};
 use argon2::{
-    password_hash::{
-        rand_core::{OsRng, RngCore},
-        SaltString,
-    },
+    password_hash::{rand_core::OsRng, SaltString},
     Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
 };
 use diesel::prelude::*;
+use process_tokens::create_token;
 use uuid::Uuid;
 
 #[derive(Queryable, Debug,  PartialEq)]
@@ -17,6 +18,7 @@ pub struct User {
     pub id: Uuid,
     pub username: String,
     pub access_rights: AccessRights,
+    pub company: Option<String>,
     pub secret: String,
 }
 
@@ -28,9 +30,25 @@ pub struct NewUser<'a> {
 }
 
 #[derive(Insertable, Queryable)]
+#[diesel(table_name = timers)]
+pub struct NewTimer<'a> {
+    pub user_id: &'a Uuid,
+    pub job: &'a str,
+    pub started_at: &'a str,
+    pub finished_at: &'a str,
+}
+
+#[derive(Insertable, Queryable)]
 #[diesel(table_name = tokens)]
 pub struct NewToken<'a> {
     pub token: &'a str,
+    pub user_id: &'a Uuid,
+}
+
+#[derive(Insertable, Queryable)]
+#[diesel(table_name = jobs)]
+pub struct NewJob<'a> {
+    pub job: &'a str,
     pub user_id: &'a Uuid,
 }
 
@@ -70,8 +88,8 @@ pub trait AuthorizationDatabase {
 
 impl AuthorizationDatabase for AuthenticationRequest {
     fn login(&self, conn: &mut PgConnection) -> Result<String, AppError> {
-        println!("{}", self.login);
-        println!("{}", self.password);
+        dbg!(&self.login);
+        dbg!(&self.password);
         match users::table
             .filter(users::username.eq(self.login.to_lowercase()))
             .get_result::<User>(conn)
@@ -87,7 +105,7 @@ impl AuthorizationDatabase for AuthenticationRequest {
                 } else {
                     Err(AppError::WrongPassword)
                 }
-            }
+            },
             Err(e) => Err(AppError::from(e)),
         }
     }
@@ -116,34 +134,5 @@ impl AuthorizationDatabase for AuthenticationRequest {
             Ok(_) => Ok(()),
             Err(e) => Err(AppError::from(e)),
         };
-    }
-}
-
-pub fn create_token(user: User, conn: &mut PgConnection) -> Result<String, AppError> {
-    let mut token_bytes = [0u8, 32];
-    OsRng.fill_bytes(&mut token_bytes);
-    let token_string = base64::encode(token_bytes);
-    let token_entry = NewToken {
-        token: &token_string,
-        user_id: &user.id,
-    };
-    match diesel::insert_into(tokens::table)
-        .values(token_entry)
-        .execute(conn)
-    {
-        Ok(_) => Ok(token_string),
-        Err(e) => Err(AppError::from(e)),
-    }
-}
-
-pub fn check_token(processed_token: String, conn: &mut PgConnection) -> Result<User, AppError> {
-    match users::table
-        .left_join(tokens::table.on(tokens::user_id.eq(users::id)))
-        .select((users::id, users::username, users::access_rights, users::secret))
-        .filter(tokens::token.eq(&processed_token))
-        .get_result::<User>(conn)
-    {
-        Ok(user) => Ok(user),
-        Err(_) => Err(AppError::UnauthorizedUser),
     }
 }
