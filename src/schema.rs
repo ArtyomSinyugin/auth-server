@@ -3,7 +3,7 @@
 diesel::table! {
     use diesel::sql_types::*;
 
-    jobs (job) {
+    jobs (job, user_id) {
         #[max_length = 128]
         job -> Varchar,
         user_id -> Uuid,
