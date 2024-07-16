@@ -1,19 +1,10 @@
 use actix_web::{dev::ServiceRequest, guard::Guard};
-use actix_web::web;
-use diesel::deserialize::FromSqlRow;
-//use diesel::{deserialize::FromSqlRow, sql_types::Integer, expression::AsExpression};
+use actix_web::{web, HttpRequest};
+use diesel::PgConnection;
 
 use crate::{
-    db_connection::PgPool, AuthorizedUser, errors::AppError, models::process_tokens::check_token,
+    db_ops::PgPool, AuthorizedUser, errors::AppError, models::{AccessRights, User}, auth::get_user_by_token
 };
-
-#[derive(PartialEq, Debug, FromSqlRow, Clone, Copy)]
-//#[diesel(sql_type = Integer)]
-pub enum AccessRights {
-    Admin,
-    User, 
-    Unregistered, 
-}
 
 impl AccessRights {
     pub fn guard(access_rights: AccessRights) -> Self {
@@ -29,7 +20,17 @@ impl Guard for AccessRights {
     }
 }
 
-pub fn extract_header_token(request: &ServiceRequest) -> Result<String, AppError> {
+pub fn extract_header_token_from_servicerequest(request: &ServiceRequest) -> Result<String, AppError> {
+    match request.headers().get("authorization") {
+        Some(token) => match token.to_str() {
+            Ok(processed_token) => Ok(String::from(processed_token)),
+            Err(_) => Err(AppError::Unreachable),
+        },
+        None => Err(AppError::NoTokenInHeader),
+    }
+}
+
+pub fn extract_header_token_from_httprequest(request: &HttpRequest) -> Result<String, AppError> {
     match request.headers().get("authorization") {
         Some(token) => match token.to_str() {
             Ok(processed_token) => Ok(String::from(processed_token)),
@@ -54,44 +55,12 @@ pub fn process_token(
     };
 
     result
-
-    //auth.get_ref()
-    //    .user_id
-    //    .set(result.expect("Ошибка AuthorizedUser"));
 }
 
-/*
-#[post("/login")]
-pub async fn login(
-    maybe_login_request: Option<web::Json<AuthenticationRequest>>,
-    pool: web::Data<PgPool>
-) -> Result<HttpResponse, AppError> {
-    web::block(move|| {
-        let conn = &mut pool.get().expect("Ошибка соединения при идентификации");
-        match maybe_login_request.unwrap().into_inner().login(conn) {
-            Ok(user) => create_token(user, conn),
-            Err(e) => Err(e),
-        }
-    })
-    .then(|res| async {convert(res)})
-    .await
-}
- */
-/*
-fn extract_header_token(request: &ServiceRequest, conn: &mut PgConnection) -> Result<String, AppError> {
-    match request.headers().get("user-token") {
-        Some(token) => {
-            match token.to_str() {
-                Ok(processed_token) => {
-                    match check_token(processed_token, conn) {
-                        Ok(token) => Ok(token),
-                        Err(e) => Err(AppError::from(e)),
-                    }
-                },
-                Err(_) => Err(AppError::ErrorProcessingToken),
-            }
-        },
-        None => Err(AppError::NoTokenInHeader)
+pub fn check_token(processed_token: String, conn: &mut PgConnection) -> Result<User, AppError> {
+    match get_user_by_token(processed_token, conn)
+    {
+        Ok(user) => Ok(user),
+        Err(_) => Err(AppError::UnauthorizedUser),
     }
 }
- */

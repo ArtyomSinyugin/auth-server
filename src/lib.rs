@@ -1,13 +1,15 @@
-mod db_connection;
+pub mod db_ops;
 mod errors;
 mod middleware;
 mod models;
 mod routes;
 mod schema;
 
-use crate::{db_connection::*, routes::{
-    requests::{characters, for_staff, page},
-    guards::AccessRights}};
+use crate::{
+    db_ops::*, 
+    routes::requests::{characters, for_staff, page},
+    models::AccessRights,
+    };
 use actix_web::{guard, web, App, HttpServer};
 use routes::page404;
 

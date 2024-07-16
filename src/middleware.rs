@@ -6,7 +6,12 @@ use actix_web::{
 };
 use uuid::Uuid;
 
-use crate::{routes::guards::{extract_header_token, process_token, AccessRights}, AuthorizedUser, PgPool};
+use crate::{
+    models::AccessRights, 
+    routes::guards::{extract_header_token_from_servicerequest, process_token}, 
+    AuthorizedUser, 
+    PgPool
+};
 
 pub(crate) struct Authorization;
 
@@ -49,7 +54,7 @@ where
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
 
-        let processed_token = match extract_header_token(&req) {
+        let processed_token = match extract_header_token_from_servicerequest(&req) {
             Ok(string) => string,
             Err(_) => { dbg!("No token in the header"); "".to_string() },
         };

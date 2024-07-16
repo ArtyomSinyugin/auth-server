@@ -1,19 +1,11 @@
-pub mod process_tokens;
-pub mod job;
-
 use crate::{
-    errors::AppError, routes::AuthenticationRequest, schema::{timers, tokens, users, jobs}, AccessRights
+    errors::AppError, schema::{timers, tokens, users, jobs},
 };
-use diesel::{backend::Backend, deserialize::{self, FromSql}, serialize::ToSql, sql_types::Integer};
-use argon2::{
-    password_hash::{rand_core::OsRng, SaltString},
-    Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
-};
+use diesel::{backend::Backend, deserialize::{self, FromSql, FromSqlRow}, serialize::ToSql, sql_types::Integer};
 use diesel::prelude::*;
-use process_tokens::create_token;
 use uuid::Uuid;
 
-#[derive(Queryable, Debug,  PartialEq)]
+#[derive(Queryable, Debug, PartialEq)]
 pub struct User {
     pub id: Uuid,
     pub username: String,
@@ -31,7 +23,7 @@ pub struct NewUser<'a> {
 
 #[derive(Insertable, Queryable)]
 #[diesel(table_name = timers)]
-pub struct NewTimer<'a> {
+pub struct Timer<'a> {
     pub user_id: &'a Uuid,
     pub job: &'a str,
     pub started_at: &'a str,
@@ -40,16 +32,24 @@ pub struct NewTimer<'a> {
 
 #[derive(Insertable, Queryable)]
 #[diesel(table_name = tokens)]
-pub struct NewToken<'a> {
+pub struct Token<'a> {
     pub token: &'a str,
     pub user_id: &'a Uuid,
 }
 
-#[derive(Insertable, Queryable)]
+#[derive(Insertable)]
 #[diesel(table_name = jobs)]
 pub struct NewJob<'a> {
     pub job: &'a str,
     pub user_id: &'a Uuid,
+}
+
+#[derive(PartialEq, Debug, FromSqlRow, Clone, Copy)]
+//#[diesel(sql_type = Integer)]
+pub enum AccessRights {
+    Admin,
+    User, 
+    Unregistered, 
 }
 
 impl<DB> diesel::deserialize::FromSql<Integer, DB> for AccessRights
@@ -84,55 +84,4 @@ where
 pub trait AuthorizationDatabase {
     fn login(&self, conn: &mut PgConnection) -> Result<String, AppError>;
     fn registration(&self, conn: &mut PgConnection) -> Result<(), AppError>;
-}
-
-impl AuthorizationDatabase for AuthenticationRequest {
-    fn login(&self, conn: &mut PgConnection) -> Result<String, AppError> {
-        dbg!(&self.login);
-        dbg!(&self.password);
-        match users::table
-            .filter(users::username.eq(self.login.to_lowercase()))
-            .get_result::<User>(conn)
-        {
-            Ok(user) => {
-                let parsed_hash = PasswordHash::new(&user.secret)?;
-                if Argon2::default()
-                    .verify_password(self.password.as_bytes(), &parsed_hash)
-                    .is_ok()
-                {
-                    // Создаём токен, который вернётся в routes!!!
-                    create_token(user, conn)
-                } else {
-                    Err(AppError::WrongPassword)
-                }
-            },
-            Err(e) => Err(AppError::from(e)),
-        }
-    }
-
-    fn registration(&self, conn: &mut PgConnection) -> Result<(), AppError> {
-        let salt = match self.password.len() {
-            n if n < 8 => return Err(AppError::WeakPassword),
-            n if n > 128 => return Err(AppError::TooLongPassword),
-            _ => SaltString::generate(&mut OsRng),
-        };
-
-        let argon2 = Argon2::default();
-        let password_hash = argon2
-            .hash_password(self.password.as_bytes(), &salt)?
-            .to_string();
-
-        let new_user = NewUser {
-            username: &self.login.to_lowercase(),
-            secret: &password_hash,
-        };
-
-        return match diesel::insert_into(users::table)
-            .values(new_user)
-            .get_result::<User>(conn)
-        {
-            Ok(_) => Ok(()),
-            Err(e) => Err(AppError::from(e)),
-        };
-    }
 }

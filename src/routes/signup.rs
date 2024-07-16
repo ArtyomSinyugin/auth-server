@@ -2,7 +2,7 @@ use actix_web::{post, web, HttpResponse};
 use futures::FutureExt;
 
 use crate::{
-    db_connection::PgPool,
+    db_ops::PgPool,
     errors::AppError,
     models::AuthorizationDatabase,
     routes::{convert, AuthenticationRequest},

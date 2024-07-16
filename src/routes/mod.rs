@@ -30,7 +30,7 @@ pub struct TimerCreateRequest {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct CreateJobRequest {
+pub struct InsertJob {
     #[serde(rename = "job")]
     pub job: String,
 }
