@@ -30,9 +30,9 @@ pub struct TimerCreateRequest {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct InsertJob {
+pub struct OperationsWithJobs {
     #[serde(rename = "job")]
-    pub job: String,
+    pub jobs: Vec<String>,
 }
 
 pub fn config_authentification(cfg: &mut web::ServiceConfig) {

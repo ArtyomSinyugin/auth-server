@@ -5,7 +5,7 @@ use diesel::{backend::Backend, deserialize::{self, FromSql, FromSqlRow}, seriali
 use diesel::prelude::*;
 use uuid::Uuid;
 
-#[derive(Queryable, Debug, PartialEq)]
+#[derive(Queryable, Debug, PartialEq, Selectable, Identifiable)]
 pub struct User {
     pub id: Uuid,
     pub username: String,
@@ -30,12 +30,21 @@ pub struct Timer<'a> {
     pub finished_at: &'a str,
 }
 
-#[derive(Insertable, Queryable)]
+#[derive(Insertable)]
 #[diesel(table_name = tokens)]
-pub struct Token<'a> {
+pub struct NewToken<'a> {
     pub token: &'a str,
     pub user_id: &'a Uuid,
 }
+
+#[derive(Queryable, Debug, PartialEq, Selectable, Identifiable)]
+#[diesel(primary_key(user_id))]
+#[diesel(table_name = tokens)]
+pub struct Token {
+    pub token: String,
+    pub user_id: Uuid,
+}
+
 
 #[derive(Insertable)]
 #[diesel(table_name = jobs)]
@@ -44,8 +53,16 @@ pub struct NewJob<'a> {
     pub user_id: &'a Uuid,
 }
 
+#[derive(Queryable, Selectable, Associations, Debug, PartialEq, Identifiable)]
+#[diesel(belongs_to(Token, foreign_key = user_id))]
+#[diesel(table_name = jobs)]
+#[diesel(primary_key(job, user_id))]
+pub struct Job {
+    pub job: String,
+    pub user_id: Uuid,
+}
+
 #[derive(PartialEq, Debug, FromSqlRow, Clone, Copy)]
-//#[diesel(sql_type = Integer)]
 pub enum AccessRights {
     Admin,
     User, 
