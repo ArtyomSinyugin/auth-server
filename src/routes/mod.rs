@@ -8,7 +8,7 @@ use serde::Deserialize;
 
 use crate::{
     errors::AppError,
-    routes::{signin::login, signup::registration}, AuthorizedUser,
+    routes::{signin::login, signup::registration},
 };
 
 #[derive(Debug, Deserialize)]
@@ -48,8 +48,4 @@ where
     AppError: From<E>,
 {
     res.unwrap().map(|d| HttpResponse::Ok().json(d))
-}
-
-pub async fn page404() -> Result<HttpResponse, AppError> {
-    Ok(HttpResponse::Ok().body("Page 404! Go home, body"))
 }

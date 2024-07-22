@@ -5,7 +5,7 @@ use crate::{
 };
 
 pub fn create_token(user: User, conn: &mut PgConnection) -> Result<String, AppError> {
-    let mut token_bytes = [0u8, 32];
+    let mut token_bytes = [0u8; 32];
     OsRng.fill_bytes(&mut token_bytes);
     let token_string = base64::encode(token_bytes);
     let token_entry = NewToken {

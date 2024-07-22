@@ -85,7 +85,7 @@ impl ResponseError for AppError {
             AppError::WeakPassword => HttpResponse::LengthRequired(),
             AppError::TooLongPassword => HttpResponse::Forbidden(),
             AppError::Unreachable => HttpResponse::Forbidden(),
-            AppError::WrongPassword => HttpResponse::BadRequest(),
+            AppError::WrongPassword => HttpResponse::NotFound(),
             AppError::UnauthorizedUser => HttpResponse::Unauthorized(),
             //            AppError::TokenNotFound => HttpResponse::NotFound(),
             AppError::NotNullViolation => HttpResponse::BadRequest(),
