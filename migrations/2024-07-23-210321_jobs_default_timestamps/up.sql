@@ -1,0 +1,3 @@
+-- Your SQL goes here
+ALTER TABLE jobs ALTER column created_at SET DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE jobs ALTER column last_used_at SET DEFAULT CURRENT_TIMESTAMP;

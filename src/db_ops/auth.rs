@@ -11,8 +11,6 @@ use process_tokens::create_token;
 
 impl AuthorizationDatabase for AuthenticationRequest {
     fn login(&self, conn: &mut PgConnection) -> Result<String, AppError> {
-        dbg!(&self.login);
-        dbg!(&self.password);
         match users::table
             .filter(users::username.eq(self.login.to_lowercase()))
             .get_result::<User>(conn)
@@ -68,6 +66,6 @@ pub fn get_user_by_token(processed_token: String, conn: &mut PgConnection) -> Re
         .get_result::<User>(conn)
         {   
             Ok(user) => Ok(user),
-            Err(e) => return Err(AppError::from(e)),
+            Err(e) => return Err(AppError::DatabaseError(e)),
         }
 }

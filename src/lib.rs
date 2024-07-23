@@ -5,15 +5,18 @@ mod middleware;
 mod models;
 mod routes;
 mod schema;
+pub(crate) mod broadcast;
 
 use crate::{
     db_ops::*, 
     models::AccessRights,
     };
 use actix_web::{web, App, HttpServer};
+use broadcast::Broadcaster;
 use configuration::Configuration;
+use routes::requests::broadcast::event_stream;
 
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
 #[derive(Debug)]
@@ -28,7 +31,6 @@ pub struct AuthServer {
     config: Configuration,
 }
 
-// std::cell::Cell<Uuid> - для изменяемости в структуре
 impl AuthServer {
     pub fn new(port: u16, config: Configuration) -> Self {
         AuthServer { port, config }
@@ -44,6 +46,8 @@ impl AuthServer {
             access_rights: Mutex::new(AccessRights::Unregistered),
         });
 
+        let stream_data = Broadcaster::create();
+
         run_migrations(&mut pool.get().unwrap())
             .map_err(|e| eprint!("Автоматизация миграций провалилась, причина: {:?}", e))
             .unwrap();
@@ -51,10 +55,14 @@ impl AuthServer {
         HttpServer::new(move || {
             App::new()
                 .app_data(web::Data::new(pool.clone()))
+                .app_data(web::Data::from(Arc::clone(&stream_data)))
                 .app_data(user.clone())
                 .app_data(web::Data::new(self.config.clone()))
                 .wrap(middleware::Authorization)
-                .service(web::scope("/api-v1").guard(AccessRights::guard(AccessRights::Unregistered)).configure(routes::config_authentification))
+                .service(event_stream)
+                .service(web::scope("/api-v1")
+                    .configure(routes::config_authentification)
+                    .configure(routes::config_tasks))      
                 .default_service(actix_files::Files::new("/", "../timer/dist/").index_file("index.html"))
         })
         .bind((ip, self.port))?
@@ -62,3 +70,5 @@ impl AuthServer {
         .await
     }
 }
+
+

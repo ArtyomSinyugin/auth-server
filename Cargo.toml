@@ -13,10 +13,13 @@ serde_json = "1.0.91"
 diesel = { version = "2.2.1", features = ["postgres", "r2d2", "uuid"] }
 diesel_migrations = "2.2.0"
 dotenvy = "0.15.6"
-futures = "0.3.26"
+futures = "0.3.30"
 argon2 = "0.5.0"
 base64 = "0.13"
 config = "0.13.4"
+actix-web-lab = "0.20.2"
+tokio = { version = "1.38.1", default-features = false, features = ["sync"] }
+tokio-stream = "0.1.15"
 
 [dependencies.uuid]
 version = "1.2.2"

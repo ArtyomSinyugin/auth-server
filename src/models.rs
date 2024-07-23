@@ -48,7 +48,7 @@ pub struct Token {
 
 #[derive(Insertable)]
 #[diesel(table_name = jobs)]
-pub struct NewJob<'a> {
+pub struct NewTask<'a> {
     pub job: &'a str,
     pub user_id: &'a Uuid,
 }
