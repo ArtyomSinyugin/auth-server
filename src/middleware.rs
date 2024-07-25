@@ -15,8 +15,6 @@ use crate::{
 
 pub(crate) struct Authorization;
 
-// `S` - type of the next service
-// `B` - type of response's body
 impl<S, B> Transform<S, ServiceRequest> for Authorization
 where
     S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
@@ -35,7 +33,6 @@ where
 }
 
 pub struct ChangeAccessRights<S> {
-    /// The next service to call
     service: S,
 }
 
@@ -49,7 +46,6 @@ where
     type Error = Error;
     type Future = S::Future;
 
-    // This service is ready when its next service is ready
     forward_ready!(service);
 
     fn call(&self, req: ServiceRequest) -> Self::Future {

@@ -7,7 +7,7 @@ use crate::{
 pub fn create_task_for_user_into_db(processed_token: String, job: OperationsWithJobs, conn: &mut PgConnection) -> Result<(), AppError> {  // здесь даём токен, а не пользователя
     let user = get_user_by_token(processed_token, conn)?;
     let job_entry = NewTask {
-        job: &job.jobs[0],
+        job: &job.tasks[0],
         user_id: &user.id,
     };
     match diesel::insert_into(jobs::table)
@@ -47,7 +47,7 @@ pub fn fetch_all_tasks_for_user(processed_token: String, conn: &mut PgConnection
     let token = fetch_token(processed_token, conn)?;
     let vec_jobs: Vec<Job> = Job::belonging_to(&token).select(Job::as_select()).get_results::<Job>(conn)?;
     Ok(
-        OperationsWithJobs { jobs: vec_jobs.iter().map(|job| job.job.clone()).collect::<Vec<String>>() }
+        OperationsWithJobs { tasks: vec_jobs.iter().map(|job| job.job.clone()).collect::<Vec<String>>() }
     )
 }
 

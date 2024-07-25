@@ -18,7 +18,7 @@ pub fn create_token(user: User, conn: &mut PgConnection) -> Result<String, AppEr
     {
         Ok(_) => {
             let token_count: i64 = tokens::table.filter(tokens::user_id.eq(&user.id)).count().get_result::<i64>(conn).expect("tokens count error when process tokens");
-            while token_count > 4 {
+            if token_count > 3 {
                 let oldest_record: Token = tokens::table.select(Token::as_select()).filter(tokens::user_id.eq(&user.id)).order(tokens::created_at.asc()).first::<Token>(conn)?;
                 diesel::delete(tokens::table.filter(tokens::token.eq(oldest_record.token))).execute(conn)?;
             }

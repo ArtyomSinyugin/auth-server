@@ -1,7 +1,7 @@
 use actix_web::{get, post, web, HttpRequest, HttpResponse};
 use futures::FutureExt;
 use crate::{
-    broadcast::Broadcaster, db_ops::{process_tasks::{create_task_for_user_into_db, delete_job, insert_timer_for_user_into_db}, PgPool}, errors::AppError, process_tasks::{fetch_all_tasks_for_user, update_job}, routes::{convert, guards::extract_header_token_from_httprequest, OperationsWithJobs}
+    broadcast::{Broadcaster, ClientEvents}, db_ops::{process_tasks::{create_task_for_user_into_db, delete_job, insert_timer_for_user_into_db}, PgPool}, errors::AppError, process_tasks::{fetch_all_tasks_for_user, update_job}, routes::{convert, guards::extract_header_token_from_httprequest, OperationsWithJobs}
 };
 
 use super::TimerCreateRequest;
@@ -63,18 +63,19 @@ pub async fn create_task_request(
     let task_to_db = task.clone();
     web::block(move || {
         let conn = &mut pool.get().expect("Ошибка соединения при создании работы");
-        let data = task_to_db;
-        match create_task_for_user_into_db(token, data, conn)
+        match create_task_for_user_into_db(token, task_to_db, conn)
         {
             Ok(_) => Ok(()),
             Err(e) => Err(e),
         }
     })
     .then(|res| async { 
-        let msg = task.into_inner();
-        let msg = msg.jobs[0].as_str();
-        broadcaster.broadcast(msg).await;
-        convert(res) 
+        if let Ok(_) = res.as_ref().unwrap() {
+            let msg = task.into_inner();
+            let msg = msg.tasks[0].as_str();
+            broadcaster.broadcast(msg, ClientEvents::CreateTask).await;
+        }
+        convert(res)
     })
     .await
 }
@@ -82,48 +83,65 @@ pub async fn create_task_request(
 #[post("/delete_tasks_request")]
 pub async fn delete_tasks_request(
     req: HttpRequest,
-    delete_job_request: Option<web::Json<OperationsWithJobs>>,
+    delete_tasks_request: Option<web::Json<OperationsWithJobs>>,
+    broadcaster: web::Data<Broadcaster>,
     pool: web::Data<PgPool>,
 ) -> Result<HttpResponse, AppError> {
     let token = match extract_header_token_from_httprequest(&req) {
             Ok(value) => value.to_string(),
             Err(e) => return Err(e)
         };
+    let delete_tasks_request = delete_tasks_request.unwrap().tasks.clone();
+    let delete_task_to_db = delete_tasks_request.clone();
     web::block(move || {
         let conn = &mut pool.get().expect("Ошибка соединения при создании работы");
-        let data = delete_job_request.unwrap().into_inner().jobs;
-        match delete_job(token, data, conn)
+        match delete_job(token, delete_task_to_db, conn)
         {
             Ok(()) => Ok(()),
             Err(e) => Err(e),
         }
     })
-    .then(|res| async { convert(res) })
+    .then(|res| async { 
+        if let Ok(_) = res.as_ref().unwrap() {
+            let mut msg = String::new();
+            for task in delete_tasks_request {
+                let prepare_msg = format!("{},", task);
+                msg.push_str(&prepare_msg)
+            }
+            broadcaster.broadcast(&msg, ClientEvents::DeleteTasks).await;
+        }
+        convert(res) 
+     })
     .await
 }
 
 #[post("/update_task_request")]
 pub async fn update_task_request(
     req: HttpRequest,
-    new_job_from_client: Option<web::Json<OperationsWithJobs>>,
+    update_task_name: Option<web::Json<OperationsWithJobs>>,
+    broadcaster: web::Data<Broadcaster>,
     pool: web::Data<PgPool>,
 ) -> Result<HttpResponse, AppError> {
     let token = match extract_header_token_from_httprequest(&req) {
             Ok(value) => value.to_string(),
             Err(e) => return Err(e)
         };
+    let update_task_name = update_task_name.unwrap().tasks.clone();
+    let update_task_name_in_db = update_task_name.clone();
     web::block(move || {
         let conn = &mut pool.get().expect("Ошибка соединения при создании работы");
-        let data = new_job_from_client
-            .unwrap()
-            .into_inner()
-            .jobs;
-        match update_job(token, data, conn)
+        match update_job(token, update_task_name_in_db, conn)
         {
             Ok(()) => Ok(()),
             Err(e) => Err(e),
         }
     })
-    .then(|res| async { convert(res) })
+    .then(|res| async { 
+        if let Ok(_) = res.as_ref().unwrap() {
+            let msg = format!("{},{}", update_task_name[0], update_task_name[1]);
+            broadcaster.broadcast(&msg, ClientEvents::UpdateTask).await;
+        }
+        convert(res) 
+    })
     .await
 }
