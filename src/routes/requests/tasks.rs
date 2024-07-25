@@ -1,7 +1,7 @@
 use actix_web::{get, post, web, HttpRequest, HttpResponse};
 use futures::FutureExt;
 use crate::{
-    broadcast::{Broadcaster, ClientEvents}, db_ops::{process_tasks::{create_task_for_user_into_db, delete_job, insert_timer_for_user_into_db}, PgPool}, errors::AppError, process_tasks::{fetch_all_tasks_for_user, update_job}, routes::{convert, guards::extract_header_token_from_httprequest, OperationsWithJobs}
+    broadcast::{Broadcaster, ClientEvents}, db_ops::{process_tasks::{create_task_for_user_into_db, delete_task, insert_timer_for_user_into_db}, PgPool}, errors::AppError, process_tasks::{fetch_all_tasks_for_user, update_job}, routes::{convert, guards::extract_header_token_from_httprequest, OperationsWithJobs}
 };
 
 use super::TimerCreateRequest;
@@ -95,7 +95,7 @@ pub async fn delete_tasks_request(
     let delete_task_to_db = delete_tasks_request.clone();
     web::block(move || {
         let conn = &mut pool.get().expect("Ошибка соединения при создании работы");
-        match delete_job(token, delete_task_to_db, conn)
+        match delete_task(token, delete_task_to_db, conn)
         {
             Ok(()) => Ok(()),
             Err(e) => Err(e),

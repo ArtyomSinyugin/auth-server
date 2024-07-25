@@ -1,5 +1,5 @@
 use crate::{
-    errors::AppError, schema::{timers, tokens, users, jobs},
+    errors::AppError, schema::{tasks, timers, tokens, users},
 };
 use diesel::{backend::Backend, deserialize::{self, FromSql, FromSqlRow}, serialize::ToSql, sql_types::Integer};
 use diesel::prelude::*;
@@ -25,7 +25,7 @@ pub struct NewUser<'a> {
 #[diesel(table_name = timers)]
 pub struct Timer<'a> {
     pub user_id: &'a Uuid,
-    pub job: &'a str,
+    pub task: &'a str,
     pub started_at: &'a str,
     pub finished_at: &'a str,
 }
@@ -47,18 +47,18 @@ pub struct Token {
 
 
 #[derive(Insertable)]
-#[diesel(table_name = jobs)]
+#[diesel(table_name = tasks)]
 pub struct NewTask<'a> {
-    pub job: &'a str,
+    pub task: &'a str,
     pub user_id: &'a Uuid,
 }
 
 #[derive(Queryable, Selectable, Associations, Debug, PartialEq, Identifiable)]
 #[diesel(belongs_to(Token, foreign_key = user_id))]
-#[diesel(table_name = jobs)]
-#[diesel(primary_key(job, user_id))]
-pub struct Job {
-    pub job: String,
+#[diesel(table_name = tasks)]
+#[diesel(primary_key(task, user_id))]
+pub struct Task {
+    pub task: String,
     pub user_id: Uuid,
 }
 

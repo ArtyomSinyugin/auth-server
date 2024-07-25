@@ -22,7 +22,7 @@ pub struct AuthenticationRequest {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct TimerCreateRequest {
     #[serde(rename = "job")]
-    pub job: String,
+    pub task: String,
     #[serde(rename = "started_at")]
     pub started_at: String,
     #[serde(rename = "finished_at")]
