@@ -6,6 +6,8 @@ diesel::table! {
     tasks (task, user_id) {
         #[max_length = 128]
         task -> Varchar,
+        #[max_length = 128]
+        task_group -> Varchar,
         user_id -> Uuid,
         created_at -> Timestamp,
         last_used_at -> Timestamp,
@@ -21,10 +23,8 @@ diesel::table! {
         #[max_length = 128]
         task -> Varchar,
         date -> Date,
-        #[max_length = 128]
-        started_at -> Varchar,
-        #[max_length = 128]
-        finished_at -> Nullable<Varchar>,
+        started_at -> Int8,
+        finished_at -> Nullable<Int8>,
     }
 }
 

@@ -2,6 +2,7 @@
 CREATE TABLE IF NOT EXISTS tasks
 (
     task VARCHAR(128) NOT NULL,
+    task_group VARCHAR(128) NOT NULL,
     user_id uuid NOT NULL
         CONSTRAINT task_to_users
         REFERENCES users

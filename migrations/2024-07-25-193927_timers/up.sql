@@ -9,6 +9,6 @@ CREATE TABLE IF NOT EXISTS timers
         ON DELETE CASCADE,
     task VARCHAR(128) NOT NULL,
     date DATE NOT NULL DEFAULT CURRENT_DATE,
-    started_at VARCHAR(128) NOT NULL,
-    finished_at VARCHAR(128)
+    started_at BIGINT NOT NULL,
+    finished_at BIGINT
 );

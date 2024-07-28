@@ -3,6 +3,7 @@ use crate::{
 };
 use diesel::{backend::Backend, deserialize::{self, FromSql, FromSqlRow}, serialize::ToSql, sql_types::Integer};
 use diesel::prelude::*;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Queryable, Debug, PartialEq, Selectable, Identifiable)]
@@ -23,11 +24,17 @@ pub struct NewUser<'a> {
 
 #[derive(Insertable, Queryable)]
 #[diesel(table_name = timers)]
-pub struct Timer<'a> {
+pub struct NewTimer<'a> {
     pub user_id: &'a Uuid,
     pub task: &'a str,
-    pub started_at: &'a str,
-    pub finished_at: &'a str,
+    pub started_at: &'a i64,
+}
+
+#[derive(Queryable, Serialize, Deserialize)]
+#[diesel(table_name = timers)]
+pub struct FetchTimer {
+    pub task: String,
+    pub started_at: i64,
 }
 
 #[derive(Insertable)]
@@ -50,6 +57,7 @@ pub struct Token {
 #[diesel(table_name = tasks)]
 pub struct NewTask<'a> {
     pub task: &'a str,
+    pub task_group: &'a str,
     pub user_id: &'a Uuid,
 }
 

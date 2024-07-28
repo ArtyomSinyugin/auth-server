@@ -4,7 +4,7 @@ mod signup;
 pub mod requests;
 
 use actix_web::{web, HttpResponse};
-use requests::tasks::{create_task_request, create_task_timer_request, delete_tasks_request, get_all_tasks_for_user};
+use requests::tasks::{create_task_request, create_task_timer_request, delete_task_timer_request, get_init_data_for_user, insert_finished_at_to_timer_request, update_task_request};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -19,14 +19,14 @@ pub struct AuthenticationRequest {
     pub password: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct TimerCreateRequest {
-    #[serde(rename = "job")]
+    #[serde(rename = "task")]
     pub task: String,
     #[serde(rename = "started_at")]
-    pub started_at: String,
+    pub started_at: i64,
     #[serde(rename = "finished_at")]
-    pub finished_at: String,
+    pub finished_at: i64,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -46,10 +46,13 @@ pub fn config_authentification(cfg: &mut web::ServiceConfig) {
 pub fn config_tasks(cfg: &mut web::ServiceConfig) {
     cfg
         .service(web::scope("tasks").guard(AccessRights::guard(AccessRights::User))
-            .service(get_all_tasks_for_user)
+            .service(get_init_data_for_user)
             .service(create_task_timer_request) 
+            .service(insert_finished_at_to_timer_request)
+            .service(delete_task_timer_request)
             .service(create_task_request)
-            .service(delete_tasks_request)
+            .service(create_task_request)
+            .service(update_task_request)
     );
 }
 

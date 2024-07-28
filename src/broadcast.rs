@@ -9,10 +9,8 @@ use tokio_stream::wrappers::ReceiverStream;
 
 pub enum ClientEvents {
     StartDayTime,
-    DayTimeWriteToDB,
     StopDayTime,
     StartTask,
-    TaskTimeWriteToDB,
     StopTask,
     CreateTask,
     UpdateTask,
@@ -77,10 +75,8 @@ impl Broadcaster {
             .map(|client| {
                 match event {
                     ClientEvents::StartDayTime => client.send(sse::Data::new(msg).event("start_day_time").into()),
-                    ClientEvents::DayTimeWriteToDB => client.send(sse::Data::new(msg).event("day_time_to_db").into()),
                     ClientEvents::StopDayTime => client.send(sse::Data::new(msg).event("stop_day_time").into()),
                     ClientEvents::StartTask => client.send(sse::Data::new(msg).event("start_task").into()),
-                    ClientEvents::TaskTimeWriteToDB => client.send(sse::Data::new(msg).event("task_to_db").into()),
                     ClientEvents::StopTask => client.send(sse::Data::new(msg).event("stop_task").into()),
                     ClientEvents::CreateTask => client.send(sse::Data::new(msg).event("new_task").into()),
                     ClientEvents::UpdateTask => client.send(sse::Data::new(msg).event("update_task").into()),
